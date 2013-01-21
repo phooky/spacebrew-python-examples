@@ -2,21 +2,43 @@ import websocket
 import threading
 import json
 
+typeMap = {
+    "string" : basestring,
+    "range" : int,
+    "boolean" : bool
+}
 
 class SpaceBrew(object):
     # Define any runtime errors we'll need
     class ConfigurationError(Exception):
-	def __init__(self, brew, explanation):
-	    self.brew = brew
+	def __init__(self, explanation):
 	    self.explanation = explanation
 	def __str__(self):
 	    return repr(self.explanation)
 
+    class TypeValidationError(Exception):
+        def __init__(self, value, brewType):
+            self.value = value
+            self.brewType = brewType
+        def __str__(self):
+            return "{0} not of type {1} (python type {2})".format(self.value,self.brewType,type(self.value))
+
     class Slot(object):
+        def validateType(self,brewType):
+            if not brewType in typeMap.keys():
+                raise SpaceBrew.ConfigurationError("Unrecognized type {0}".format(brewType))
+
+        def validateValue(self, v):
+            if not isinstance(v,typeMap[self.type]):
+                raise SpaceBrew.TypeValidationError(value,self.type)
+
 	def __init__(self, name, brewType, default = None):
 	    self.name = name
 	    self.type = brewType
+            self.validateType(self.type)
 	    self.value = None
+            if default != None:
+                validateValue(default)
 	    self.default = default
 	def makeConfig(self):
 	    d = { 'name':self.name, 'type':self.type, 'default':self.default }
@@ -48,13 +70,13 @@ class SpaceBrew(object):
 
     def addPublisher(self, name, brewType="string", default=None):
 	if self.connected:
-	    raise ConfigurationError(self,"Can not add a new publisher to a running SpaceBrew instance (yet).")
+	    raise SpaceBrew.ConfigurationError(self,"Can not add a new publisher to a running SpaceBrew instance (yet).")
 	else:
 	    self.publishers[name]=self.Publisher(name, brewType, default)
     
     def addSubscriber(self, name, brewType="string", default=None):
 	if self.connected:
-	    raise ConfigurationError(self,"Can not add a new subscriber to a running SpaceBrew instance (yet).")
+	    raise SpaceBrew.ConfigurationError(self,"Can not add a new subscriber to a running SpaceBrew instance (yet).")
 	else:
 	    self.subscribers[name]=self.Subscriber(name, brewType, default)
 
@@ -76,7 +98,11 @@ class SpaceBrew(object):
     def on_message(self,ws,message):
 	msg = json.loads(message)['message']
 	sub=self.subscribers[msg['name']]
-	sub.disseminate(msg['value'])
+        try:
+            sub.validateValue(msg['value'])
+            sub.disseminate(msg['value'])
+        except SpaceBrew.TypeValidationError as tve:
+            print tve
 
     def on_error(self,ws,error):
 	print "ERROR:",error
@@ -86,6 +112,7 @@ class SpaceBrew(object):
 
     def publish(self,name,value):
 	publisher = self.publishers[name]
+        publisher.validateValue(value)
 	message = {'message': {
 		'clientName':self.name,
 		'name':publisher.name,
