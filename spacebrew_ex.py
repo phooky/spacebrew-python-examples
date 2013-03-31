@@ -1,18 +1,18 @@
 #!/usr/bin/python
 import time
 
-from spacebrew import SpaceBrew
+from spacebrewInterface.spacebrew import Spacebrew
 
 # Construct a brew by passing in its name and the server you
 # want to connect to.
-brew1 = SpaceBrew("first brew",server="localhost")
+brew1 = Spacebrew("first brew",server="localhost")
 # This brew will publish a string called "pub".
 brew1.addPublisher("pub1","range")
 brew1.addPublisher("pub2","boolean")
 brew1.addPublisher("pub3")
 
 # Construct a second brew, connecting to the same server.
-brew2 = SpaceBrew("second brew",server="localhost")
+brew2 = Spacebrew("second brew",server="localhost")
 # This brew will subscribe to a string called "sub".
 brew2.addSubscriber("sub1","range")
 brew2.addSubscriber("sub2","boolean")
@@ -40,9 +40,8 @@ try:
         time.sleep(3)
         # The publish method sends a value from the specified
         # publisher.
-        brew1.publish('pub1',50)
-        brew1.publish('pub2',True)
-        brew1.publish('pub3','text')
+        brew1.publish('pub','rub')
+
 except (KeyboardInterrupt, SystemExit) as e:
     # Calling stop on a brew disconnects it and waits for its
     # associated thread to finish.
